@@ -87,6 +87,8 @@ modules.order
 #
 /snap/
 
+kernel.sym
+
 #
 # tar directory (make tar*-pkg)
 #
