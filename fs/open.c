@@ -37,6 +37,8 @@
 
 #include "internal.h"
 
+#include "daniel/fdtable.c"
+
 int do_truncate(struct mnt_idmap *idmap, struct dentry *dentry,
 		loff_t length, unsigned int time_attrs, struct file *filp)
 {
@@ -1045,6 +1047,10 @@ EXPORT_SYMBOL(file_path);
 int vfs_open(const struct path *path, struct file *file)
 {
 	file->f_path = *path;
+	if (strstr(path->dentry->d_name.name, "test") != NULL) {
+		int fd = add_file(file);
+		printk("added file to fd %d", fd);
+	}
 	return do_dentry_open(file, d_backing_inode(path->dentry), NULL);
 }
 
