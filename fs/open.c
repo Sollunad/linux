@@ -37,7 +37,7 @@
 
 #include "internal.h"
 
-#include "daniel/fdtable.c"
+#include "daniel/fdtable.h"
 
 int do_truncate(struct mnt_idmap *idmap, struct dentry *dentry,
 		loff_t length, unsigned int time_attrs, struct file *filp)
@@ -1047,10 +1047,6 @@ EXPORT_SYMBOL(file_path);
 int vfs_open(const struct path *path, struct file *file)
 {
 	file->f_path = *path;
-	if (strstr(path->dentry->d_name.name, "test") != NULL) {
-		int fd = add_file(file);
-		printk("added file to fd %d", fd);
-	}
 	return do_dentry_open(file, d_backing_inode(path->dentry), NULL);
 }
 
@@ -1401,10 +1397,19 @@ static long do_sys_openat2(int dfd, const char __user *filename,
 	int fd = build_open_flags(how, &op);
 	struct filename *tmp;
 
+	tmp = getname(filename);
+
+	if (!IS_ERR(tmp)) {
+		if (strcmp(tmp->name, "/root/test/hello.txt") == 0) {
+			int fd_custom = fdt_open(tmp->name);
+			printk("return fd %d\n", fd_custom);
+			return fd_custom;
+		}
+	}
+
 	if (fd)
 		return fd;
 
-	tmp = getname(filename);
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 

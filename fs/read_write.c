@@ -25,6 +25,8 @@
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
 
+#include "daniel/fdtable.h"
+
 const struct file_operations generic_ro_fops = {
 	.llseek		= generic_file_llseek,
 	.read_iter	= generic_file_read_iter,
@@ -601,6 +603,10 @@ static inline loff_t *file_ppos(struct file *file)
 
 ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
 {
+	if (fdt_is_responsible(fd)) {
+		return fdt_read(fd, buf, count);
+	}
+
 	struct fd f = fdget_pos(fd);
 	ssize_t ret = -EBADF;
 
