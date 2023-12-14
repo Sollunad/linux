@@ -2,7 +2,7 @@
 
 const char *files[1000];
 
-int FD_OFFSET = 10000;
+const int FD_OFFSET = 10000;
 
 static const char * _fdt_get_filename(unsigned int fd) {
 	return files[fd - FD_OFFSET];
@@ -19,12 +19,17 @@ int fdt_open(const char *filename) {
 		i++;
 	}
 	files[i] = filename;
+	printk("open %s under fd %d\n", filename, i + FD_OFFSET);
 	return i + FD_OFFSET;
 }
 
 ssize_t fdt_read(unsigned int fd, char __user *buf, size_t count) {
+	printk("read fd %d with count %zu\n", fd, count);
 	const char* filename = _fdt_get_filename(fd);
 	printk("read file %s\n", filename);
+	char dev_response[1024];
+	request_device("read", filename, dev_response);
+	strncpy(buf, dev_response, strlen(dev_response));
 	return count;
 }
 

@@ -1,6 +1,7 @@
 #include <linux/fs.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include "device.h"
 
 int fdt_fstat(unsigned int fd, struct kstat *stat);
 

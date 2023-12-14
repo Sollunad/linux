@@ -1401,9 +1401,7 @@ static long do_sys_openat2(int dfd, const char __user *filename,
 
 	if (!IS_ERR(tmp)) {
 		if (strcmp(tmp->name, "/root/test/hello.txt") == 0) {
-			int fd_custom = fdt_open(tmp->name);
-			printk("return fd %d\n", fd_custom);
-			return fd_custom;
+         			return fdt_open(tmp->name);
 		}
 	}
 
