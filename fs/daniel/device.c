@@ -1,96 +1,107 @@
 #include "device.h"
 
-int REQ_ID = 1;
+bool device_active = false;
 
-static ssize_t _write_to_dev(const char *data) {
-	struct file *file;
-	loff_t pos;
-	ssize_t ret;
+struct fdt_request {
+	char *call;
+	const char *filename;
+	char *param;
+};
 
-	// Open the device
-	file = filp_open("/dev/fdtable", O_WRONLY | O_CREAT | O_APPEND, 0644);
-	if (IS_ERR(file)) {
-		return PTR_ERR(file);
-	}
+struct fdt_request req_queue[1000];
+char res_queue[10][1024];
 
-	// Move to the end of the device
-	pos = file->f_pos;
-
-	// Write data to the file
-	ret = kernel_write(file, data, strlen(data), &pos);
-
-	// Close the file
-	filp_close(file, NULL);
-
-	return ret;
-}
-
-static int _get_dev_response(char* req_id, char *buf) {
-	struct file *file;
-	loff_t pos;
-	ssize_t ret;
-	char line_start[10];
-	char expected_key[10];
-	snprintf(expected_key, 10, "R%s", req_id);
-
-	// Open the device
-	file = filp_open("/dev/fdtable", O_RDONLY, 0);
-
-	// Move to the end of the device
-	pos = file->f_pos;
-
-	while (true) {
-		// Read data from the file
-		ret = kernel_read(file, line_start, 10, &pos);
-
-		// If end of file, wait for new device content
-		if (ret <= 0) {
-			continue;
-		}
-
-		printk("read new line start for %s, result: %s\n", req_id, line_start);
-
-		// Move pointer past the request id
-		pos = pos + 10;
-
-		// If start of line does not match, go to the start of new line
-		if (strcmp(line_start, expected_key) != 0) {
-			char ch;
-			while (ch != '\n') {
-				ret = kernel_read(file, &ch, 1, &pos);
-				pos++;
-			}
-			continue;
-		}
-
-		// Line matches request id, so write response to buffer
-		// Write to the buffer until the next \n
-		int buf_count = 0;
-		char ch;
-		while (ch != '\n') {
-			ret = kernel_read(file, &ch, 1, &pos);
-			pos++;
-			buf[buf_count++] = ch;
-		}
-
-		break;
-	}
-
-
-
-	// Close the file
-	filp_close(file, NULL);
-
+static int fdt_open(struct inode *inode, struct file *file) {
 	return 0;
 }
 
-void request_device(char *call, const char *filename, char *res_buf) {
-	char req_buf[1024];
-	char padded_id[10];
-	snprintf(padded_id, 10, "%09d", REQ_ID);
-	REQ_ID++;
-	snprintf(req_buf, sizeof(req_buf), "%s %s %s\n", padded_id, call, filename);
-	printk("write to device: %s", req_buf);
-	_write_to_dev(req_buf);
-	_get_dev_response(padded_id, res_buf);
+static int fdt_close(struct inode *inode, struct file *file) {
+	return 0;
+}
+
+// Accept the response from the user_buffer and handle it
+static ssize_t fdt_write(struct file *file, const char __user *user_buffer, size_t user_len, loff_t *ppos) {
+	char buf[1024];
+	int status = copy_from_user(buf, user_buffer, user_len);
+	buf[user_len] = '\0';
+	if (status) {
+		printk("error writing to misc device\n");
+		return -status;
+	}
+	strncpy(res_queue[0], buf, strlen(buf));
+	return user_len;
+}
+
+// Serialize the current request queue and write it to the user_buffer
+static ssize_t fdt_read(struct file *file, char __user *user_buffer, size_t user_len, loff_t *ppos) {
+	char *dummy_res = "Hello Misc";
+	size_t len;
+	size_t data_len = strlen(dummy_res);
+	if (user_len < data_len) {
+		len = user_len;
+	} else {
+		len = data_len;
+	}
+	int status = copy_to_user(user_buffer, dummy_res, len);
+	if (status) {
+		printk("Error writing to user buffer\n");
+		return -status;
+	}
+	return data_len;
+}
+
+static const struct file_operations fops = {
+	.read = fdt_read,
+	.write = fdt_write,
+	.open = fdt_open,
+	.release = fdt_close,
+};
+
+static struct miscdevice device = {
+	.name = "fdtdev",
+	.minor = MISC_DYNAMIC_MINOR,
+	.fops = &fops,
+};
+
+static void init_misc_device(void) {
+	device_active = true;
+	printk("Init misc device\n");
+	misc_register(&device);
+}
+
+static int write_to_queue(char *call, const char *filename, char *param) {
+	int i = 0;
+	while (req_queue[i].call != NULL) {
+		i++;
+	}
+	struct fdt_request req = {
+		call = call,
+		filename = filename,
+		param = param,
+	};
+	strncpy(res_queue[i], "", 1);
+	req_queue[i] = req;
+	printk("Added req to device queue with id %d\n", i);
+	return i;
+}
+
+static int get_dev_response(int id, char *res_buf) {
+	while (res_queue[id][0] == '\0') {
+		msleep(1);
+	}
+	int len = strlen(res_queue[id]);
+	strncpy(res_buf, res_queue[id], len);
+	req_queue[id].call = NULL;
+	req_queue[id].filename = NULL;
+	req_queue[id].param = NULL;
+	strncpy(res_queue[id], "", 1);
+	return len;
+}
+
+int request_device(char *call, const char *filename, char *param, char *res_buf) {
+	if (!device_active) {
+		init_misc_device();
+	}
+	int id = write_to_queue(call, filename, param);
+	return get_dev_response(id, res_buf);
 }

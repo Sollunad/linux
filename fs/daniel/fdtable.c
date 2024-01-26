@@ -28,8 +28,12 @@ ssize_t fdt_read(unsigned int fd, char __user *buf, size_t count) {
 	const char* filename = _fdt_get_filename(fd);
 	printk("read file %s\n", filename);
 	char dev_response[1024];
-	request_device("read", filename, dev_response);
-	strncpy(buf, dev_response, strlen(dev_response));
+	int res_len = request_device("read", filename, NULL, dev_response);
+	int status = copy_to_user(buf, dev_response, res_len);
+	if (status) {
+		printk("Error while copying to user buffer\n");
+		return -status;
+	}
 	return count;
 }
 
