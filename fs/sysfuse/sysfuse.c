@@ -1,19 +1,19 @@
-#include "fdtable.h"
+#include "sysfuse.h"
 
 const char *files[1000];
 
 const int FD_OFFSET = 10000;
 
-static const char * _fdt_get_filename(unsigned int fd) {
+static const char * _sysfuse_get_filename(unsigned int fd) {
 	return files[fd - FD_OFFSET];
 }
 
-int fdt_fstat(unsigned int fd, struct kstat *stat) {
+int sysfuse_fstat(unsigned int fd, struct kstat *stat) {
 	printk("stat fd %d", fd);
 	return 0;
 }
 
-int fdt_open(const char *filename) {
+int sysfuse_open(const char *filename) {
 	int i = 0;
 	while (files[i] != NULL) {
 		i++;
@@ -23,9 +23,9 @@ int fdt_open(const char *filename) {
 	return i + FD_OFFSET;
 }
 
-ssize_t fdt_read(unsigned int fd, char __user *buf, size_t count) {
+ssize_t sysfuse_read(unsigned int fd, char __user *buf, size_t count) {
 	printk("read fd %d with count %zu\n", fd, count);
-	const char* filename = _fdt_get_filename(fd);
+	const char* filename = _sysfuse_get_filename(fd);
 	printk("read file %s\n", filename);
 	char dev_response[1024];
 	int res_len = request_device("read", filename, NULL, dev_response);
@@ -37,10 +37,10 @@ ssize_t fdt_read(unsigned int fd, char __user *buf, size_t count) {
 	return count;
 }
 
-bool fdt_is_responsible(unsigned int fd) {
+bool sysfuse_is_responsible(unsigned int fd) {
 	if (fd < FD_OFFSET) {
 		return false;
 	}
-	return _fdt_get_filename(fd) != NULL;
+	return _sysfuse_get_filename(fd) != NULL;
 }
 

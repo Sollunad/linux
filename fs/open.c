@@ -37,7 +37,7 @@
 
 #include "internal.h"
 
-#include "daniel/fdtable.h"
+#include "sysfuse/sysfuse.h"
 
 int do_truncate(struct mnt_idmap *idmap, struct dentry *dentry,
 		loff_t length, unsigned int time_attrs, struct file *filp)
@@ -1401,7 +1401,7 @@ static long do_sys_openat2(int dfd, const char __user *filename,
 
 	if (!IS_ERR(tmp)) {
 		if (strcmp(tmp->name, "/root/test/hello.txt") == 0) {
-         			return fdt_open(tmp->name);
+         			return sysfuse_open(tmp->name);
 		}
 	}
 

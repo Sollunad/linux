@@ -26,7 +26,7 @@
 #include "internal.h"
 #include "mount.h"
 
-#include "daniel/fdtable.h"
+#include "sysfuse/sysfuse.h"
 
 /**
  * generic_fillattr - Fill in the basic attributes from the inode struct
@@ -185,8 +185,8 @@ EXPORT_SYMBOL(vfs_getattr);
  */
 int vfs_fstat(int fd, struct kstat *stat)
 {
-	if (fdt_is_responsible(fd)) {
-		return fdt_fstat(fd, stat);
+	if (sysfuse_is_responsible(fd)) {
+		return sysfuse_fstat(fd, stat);
 	}
 
 	struct fd f;

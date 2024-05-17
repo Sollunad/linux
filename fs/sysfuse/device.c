@@ -2,7 +2,7 @@
 
 bool device_active = false;
 
-struct fdt_request {
+struct sfdev_request {
 	char *call;
 	int len_call;
 	const char *filename;
@@ -11,19 +11,19 @@ struct fdt_request {
 	int len_param;
 };
 
-struct fdt_request req_queue[1000];
+struct sfdev_request req_queue[1000];
 char res_queue[10][1024];
 
-static int fdt_open(struct inode *inode, struct file *file) {
+static int sfdev_open(struct inode *inode, struct file *file) {
 	return 0;
 }
 
-static int fdt_close(struct inode *inode, struct file *file) {
+static int sfdev_close(struct inode *inode, struct file *file) {
 	return 0;
 }
 
 // Accept the response from the user_buffer and handle it
-static ssize_t fdt_write(struct file *file, const char __user *user_buffer, size_t user_len, loff_t *ppos) {
+static ssize_t sfdev_write(struct file *file, const char __user *user_buffer, size_t user_len, loff_t *ppos) {
 	char req_id[3];
 	char buf[1024];
 	long parsed_id;
@@ -50,10 +50,10 @@ static ssize_t fdt_write(struct file *file, const char __user *user_buffer, size
 }
 
 // Serialize the current request queue and write it to the user_buffer
-static ssize_t fdt_read(struct file *file, char __user *user_buffer, size_t user_len, loff_t *ppos) {
+static ssize_t sfdev_read(struct file *file, char __user *user_buffer, size_t user_len, loff_t *ppos) {
 	char response[1000];
 	for (int i = 0; i < 1000; i++) {
-		struct fdt_request req = req_queue[i];
+		struct sfdev_request req = req_queue[i];
 		if (req.len_call != 0) {
 			char id_string[4];
 			sprintf(id_string, "%03d", i);
@@ -81,14 +81,14 @@ static ssize_t fdt_read(struct file *file, char __user *user_buffer, size_t user
 }
 
 static const struct file_operations fops = {
-	.read = fdt_read,
-	.write = fdt_write,
-	.open = fdt_open,
-	.release = fdt_close,
+	.read = sfdev_read,
+	.write = sfdev_write,
+	.open = sfdev_open,
+	.release = sfdev_close,
 };
 
 static struct miscdevice device = {
-	.name = "fdtdev",
+	.name = "sysfuse",
 	.minor = MISC_DYNAMIC_MINOR,
 	.fops = &fops,
 };
@@ -110,7 +110,7 @@ static int write_to_queue(char *call, const char *filename, char *param) {
 	} else {
 		len_param = strlen(param);
 	}
-	struct fdt_request req = {
+	struct sfdev_request req = {
 		.call = call,
 		.len_call = strlen(call),
 		.filename = filename,
