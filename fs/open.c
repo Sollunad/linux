@@ -37,6 +37,8 @@
 
 #include "internal.h"
 
+#include "daniel/fdtable.h"
+
 int do_truncate(struct mnt_idmap *idmap, struct dentry *dentry,
 		loff_t length, unsigned int time_attrs, struct file *filp)
 {
@@ -1410,10 +1412,17 @@ static long do_sys_openat2(int dfd, const char __user *filename,
 	int fd = build_open_flags(how, &op);
 	struct filename *tmp;
 
+	tmp = getname(filename);
+
+	if (!IS_ERR(tmp)) {
+		if (strcmp(tmp->name, "/root/test/hello.txt") == 0) {
+         			return fdt_open(tmp->name);
+		}
+	}
+
 	if (fd)
 		return fd;
 
-	tmp = getname(filename);
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
