@@ -2,10 +2,8 @@
 
 const char *files[1000];
 
-const int FD_OFFSET = 10000;
-
 static const char * _sysfuse_get_filename(unsigned int fd) {
-	return files[fd - FD_OFFSET];
+	return files[fd];
 }
 
 int sysfuse_fstat(unsigned int fd, struct kstat *stat) {
@@ -13,14 +11,14 @@ int sysfuse_fstat(unsigned int fd, struct kstat *stat) {
 	return 0;
 }
 
-int sysfuse_open(const char *filename) {
-	int i = 0;
-	while (files[i] != NULL) {
-		i++;
-	}
-	files[i] = filename;
-	printk("open %s under fd %d\n", filename, i + FD_OFFSET);
-	return i + FD_OFFSET;
+int sysfuse_open(const char *filename, unsigned int fd) {
+	files[fd] = filename;
+	printk("open %s under fd %d\n", filename, fd);
+	return fd;
+}
+
+void sysfuse_close(unsigned int fd) {
+	files[fd] = NULL;
 }
 
 ssize_t sysfuse_read(unsigned int fd, char __user *buf, size_t count) {
@@ -38,7 +36,7 @@ ssize_t sysfuse_read(unsigned int fd, char __user *buf, size_t count) {
 }
 
 bool sysfuse_is_responsible(unsigned int fd) {
-	if (fd < FD_OFFSET) {
+	if (fd == -1 || fd >= 1000) {
 		return false;
 	}
 	return _sysfuse_get_filename(fd) != NULL;
