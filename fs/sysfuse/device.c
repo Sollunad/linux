@@ -24,28 +24,31 @@ static int sfdev_close(struct inode *inode, struct file *file) {
 
 // Accept the response from the user_buffer and handle it
 static ssize_t sfdev_write(struct file *file, const char __user *user_buffer, size_t user_len, loff_t *ppos) {
-	char req_id[3];
-	char buf[1024];
-	long parsed_id;
+	char *buf = kmalloc(sizeof(char) * 1001, GFP_KERNEL);
+	int statusCopy = copy_from_user(buf, user_buffer, user_len);
+	printk("DEVICE got response %s\n", buf);
+	if (statusCopy) {
+		printk("DEVICE error copying to kernel buffer\n");
+		kfree(buf);
+		return -statusCopy;
+	}
 
-	int status1 = copy_from_user(req_id, user_buffer, 3);
-	int status2 = copy_from_user(buf, user_buffer + 3, user_len - 3);
-	int status3 = kstrtol(req_id, 10, &parsed_id);
-	buf[user_len - 3] = '\0';
-	if (status1) {
-		printk("error copying request id from misc device\n");
-		return -status1;
+	char* req_id = kmalloc(sizeof(char) * 4, GFP_KERNEL);
+	strncpy(req_id, buf, 3);
+	req_id[3] = 0;
+	printk("DEVICE extracted request id %s\n", req_id);
+	long parsed_id;
+	int statusParse = kstrtol(req_id, 10, &parsed_id);
+	kfree(req_id);
+
+	if (statusParse) {
+		printk("DEVICE error parsing request id\n");
+		kfree(buf);
+		return -statusParse;
 	}
-	if (status2) {
-		printk("error copying response buffer from misc device\n");
-		return -status2;
-	}
-	if (status3) {
-		printk("error parsing request id\n");
-		return -status3;
-	}
-	printk("got response %s for req id %ld\n", buf, parsed_id);
-	strncpy(res_queue[parsed_id], buf, strlen(buf));
+	printk("DEVICE got response %s for req id %ld\n", buf + 3, parsed_id);
+	strncpy(res_queue[parsed_id], buf + 3, strlen(buf + 3));
+	kfree(buf);
 	return user_len;
 }
 
@@ -121,7 +124,7 @@ static int write_to_queue(char *call, const char *filename, char *param) {
 	};
 	strncpy(res_queue[i], "", 1);
 	req_queue[i] = req;
-	printk("Added req to device queue with id %d\n", i);
+	printk("DEVICE added req to device queue with id %d\n", i);
 	return i;
 }
 
@@ -129,7 +132,7 @@ static int get_dev_response(int id, char *res_buf) {
 	while (res_queue[id][0] == '\0') {
 		msleep(1);
 	}
-	printk("found response in queue for req id %ld\n", id);
+	printk("DEVICE found response in queue for req id %d\n", id);
 	int len = strlen(res_queue[id]);
 	strncpy(res_buf, res_queue[id], len);
 	req_queue[id].call = NULL;
