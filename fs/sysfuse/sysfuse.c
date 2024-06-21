@@ -9,7 +9,7 @@ static const char * _sysfuse_get_filename(unsigned int fd) {
 }
 
 int sysfuse_fstat(unsigned int fd, struct kstat *stat) {
-	printk("stat fd %d", fd);
+	printk("SYSFUSE stat fd %d", fd);
 	return 0;
 }
 
@@ -19,12 +19,18 @@ int sysfuse_open(const char *filename) {
 		i++;
 	}
 	files[i] = filename;
-	printk("open %s under fd %d\n", filename, i + FD_OFFSET);
+	printk("SYSFUSE open %s under fd %d\n", filename, i + FD_OFFSET);
 	return i + FD_OFFSET;
 }
 
+int sysfuse_close(unsigned int fd) {
+	printk("SYSFUSE close fd %d\n", fd);
+	files[fd] = NULL;
+	return 0;
+}
+
 ssize_t sysfuse_read(unsigned int fd, char __user *buf, size_t count) {
-	printk("read fd %d with count %zu\n", fd, count);
+	printk("SYSFUSE read fd %d with count %zu\n", fd, count);
 	const char* filename = _sysfuse_get_filename(fd);
 	printk("read file %s\n", filename);
 	char dev_response[1024];

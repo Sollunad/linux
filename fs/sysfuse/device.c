@@ -51,7 +51,7 @@ static ssize_t sfdev_write(struct file *file, const char __user *user_buffer, si
 
 // Serialize the current request queue and write it to the user_buffer
 static ssize_t sfdev_read(struct file *file, char __user *user_buffer, size_t user_len, loff_t *ppos) {
-	char response[1000];
+	char* response = kmalloc(sizeof(char) * 1001, GFP_KERNEL);
 	for (int i = 0; i < 1000; i++) {
 		struct sfdev_request req = req_queue[i];
 		if (req.len_call != 0) {
@@ -73,6 +73,7 @@ static ssize_t sfdev_read(struct file *file, char __user *user_buffer, size_t us
 		len = data_len;
 	}
 	int status = copy_to_user(user_buffer, response, len);
+	kfree(response);
 	if (status) {
 		printk("Error writing to user buffer\n");
 		return -status;
@@ -128,6 +129,7 @@ static int get_dev_response(int id, char *res_buf) {
 	while (res_queue[id][0] == '\0') {
 		msleep(1);
 	}
+	printk("found response in queue for req id %ld\n", id);
 	int len = strlen(res_queue[id]);
 	strncpy(res_buf, res_queue[id], len);
 	req_queue[id].call = NULL;
