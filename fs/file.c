@@ -23,6 +23,7 @@
 #include <net/sock.h>
 
 #include "internal.h"
+#include "sysfuse/sysfuse.h"
 
 unsigned int sysctl_nr_open __read_mostly = 1024*1024;
 unsigned int sysctl_nr_open_min = BITS_PER_LONG;
@@ -661,6 +662,11 @@ int close_fd(unsigned fd)
 	spin_unlock(&files->file_lock);
 	if (!file)
 		return -EBADF;
+
+	if (sysfuse_is_responsible(fd)) {
+		kfree(file);
+		return sysfuse_close(fd);
+	}
 
 	return filp_close(file, files);
 }
