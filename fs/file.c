@@ -23,6 +23,7 @@
 #include <net/sock.h>
 
 #include "internal.h"
+#include "sysfuse/sysfuse.h"
 
 unsigned int sysctl_nr_open __read_mostly = 1024*1024;
 unsigned int sysctl_nr_open_min = BITS_PER_LONG;
@@ -653,6 +654,10 @@ static struct file *pick_file(struct files_struct *files, unsigned fd)
 
 int close_fd(unsigned fd)
 {
+	if (sysfuse_is_responsible(fd)) {
+		sysfuse_close(fd);
+	}
+
 	struct files_struct *files = current->files;
 	struct file *file;
 
