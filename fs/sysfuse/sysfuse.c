@@ -25,7 +25,7 @@ int sysfuse_open(const char *filename) {
 
 int sysfuse_close(unsigned int fd) {
 	printk("SYSFUSE close fd %d\n", fd);
-	files[fd] = NULL;
+	files[fd - FD_OFFSET] = NULL;
 	return 0;
 }
 
