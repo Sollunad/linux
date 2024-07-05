@@ -32,7 +32,7 @@ int sysfuse_close(unsigned int fd) {
 ssize_t sysfuse_read(unsigned int fd, char __user *buf, size_t count) {
 	printk("SYSFUSE read fd %d with count %zu\n", fd, count);
 	const char* filename = _sysfuse_get_filename(fd);
-	printk("read file %s\n", filename);
+	printk("SYSFUSE read file %s\n", filename);
 	char dev_response[1024];
 	int res_len = request_device("read", filename, NULL, dev_response);
 	int status = copy_to_user(buf, dev_response, res_len);

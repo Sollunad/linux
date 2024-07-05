@@ -68,6 +68,7 @@ static ssize_t sfdev_read(struct file *file, char __user *user_buffer, size_t us
 			}
 		}
 	}
+	strcat(response, "\0");
 	size_t len;
 	size_t data_len = strlen(response);
 	if (user_len < data_len) {
@@ -99,7 +100,7 @@ static struct miscdevice device = {
 
 static void init_misc_device(void) {
 	device_active = true;
-	printk("Init misc device\n");
+	printk("DEVICE init\n");
 	misc_register(&device);
 }
 
