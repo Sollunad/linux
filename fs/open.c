@@ -1400,8 +1400,8 @@ static long do_sys_openat2(int dfd, const char __user *filename,
 	tmp = getname(filename);
 
 	if (!IS_ERR(tmp)) {
-		if (strcmp(tmp->name, "/root/test/hello.txt") == 0) {
-         			return sysfuse_open(tmp->name);
+		if (strstr(tmp->name, "/root/sfmnt") != NULL) {
+			return sysfuse_open(tmp->name);
 		}
 	}
 

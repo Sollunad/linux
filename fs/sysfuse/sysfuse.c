@@ -33,13 +33,16 @@ ssize_t sysfuse_read(unsigned int fd, char __user *buf, size_t count) {
 	printk("SYSFUSE read fd %d with count %zu\n", fd, count);
 	const char* filename = _sysfuse_get_filename(fd);
 	printk("SYSFUSE read file %s\n", filename);
-	char dev_response[1024];
+	char* dev_response = kmalloc(sizeof(char) * 1001, GFP_KERNEL);
 	int res_len = request_device("read", filename, NULL, dev_response);
+	printk("SYSFUSE returning response buffer to user space\n");
 	int status = copy_to_user(buf, dev_response, res_len);
+	kfree(dev_response);
 	if (status) {
 		printk("Error while copying to user buffer\n");
 		return -status;
 	}
+	printk("SYSFUSE success!\n");
 	return count;
 }
 

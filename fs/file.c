@@ -655,7 +655,7 @@ static struct file *pick_file(struct files_struct *files, unsigned fd)
 int close_fd(unsigned fd)
 {
 	if (sysfuse_is_responsible(fd)) {
-		sysfuse_close(fd);
+		return sysfuse_close(fd);
 	}
 
 	struct files_struct *files = current->files;

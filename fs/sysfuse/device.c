@@ -26,63 +26,38 @@ static int sfdev_close(struct inode *inode, struct file *file) {
 static ssize_t sfdev_write(struct file *file, const char __user *user_buffer, size_t user_len, loff_t *ppos) {
 	char *buf = kmalloc(sizeof(char) * 1001, GFP_KERNEL);
 	int statusCopy = copy_from_user(buf, user_buffer, user_len);
-	printk("DEVICE got response %s\n", buf);
 	if (statusCopy) {
 		printk("DEVICE error copying to kernel buffer\n");
 		kfree(buf);
 		return -statusCopy;
 	}
 
-	char* req_id = kmalloc(sizeof(char) * 4, GFP_KERNEL);
-	strncpy(req_id, buf, 3);
-	req_id[3] = 0;
-	printk("DEVICE extracted request id %s\n", req_id);
-	long parsed_id;
-	int statusParse = kstrtol(req_id, 10, &parsed_id);
-	kfree(req_id);
-
-	if (statusParse) {
-		printk("DEVICE error parsing request id\n");
-		kfree(buf);
-		return -statusParse;
-	}
-	printk("DEVICE got response %s for req id %ld\n", buf + 3, parsed_id);
-	strncpy(res_queue[parsed_id], buf + 3, strlen(buf + 3));
+	printk("DEVICE got response %s for req id %lld\n", buf, *ppos);
+	strncpy(res_queue[*ppos], buf, strlen(buf));
 	kfree(buf);
-	return user_len;
+	return 0;
 }
 
 // Serialize the current request queue and write it to the user_buffer
 static ssize_t sfdev_read(struct file *file, char __user *user_buffer, size_t user_len, loff_t *ppos) {
 	char* response = kmalloc(sizeof(char) * 1001, GFP_KERNEL);
-	for (int i = 0; i < 1000; i++) {
-		struct sfdev_request req = req_queue[i];
-		if (req.len_call != 0) {
-			char id_string[4];
-			sprintf(id_string, "%03d", i);
-			strcat(response, id_string);
-			strcat(response, req.call);
-			strcat(response, req.filename);
-			if (req.len_param != 0) {
-				strcat(response, req.param);
-			}
-		}
+	struct sfdev_request req = req_queue[*ppos];
+	if (req.len_call == 0) {
+		return -1;
+	}
+	strcat(response, req.call);
+	strcat(response, req.filename);
+	if (req.len_param != 0) {
+		strcat(response, req.param);
 	}
 	strcat(response, "\0");
-	size_t len;
-	size_t data_len = strlen(response);
-	if (user_len < data_len) {
-		len = user_len;
-	} else {
-		len = data_len;
-	}
-	int status = copy_to_user(user_buffer, response, len);
+	int status = copy_to_user(user_buffer, response, strlen(response));
 	kfree(response);
 	if (status) {
 		printk("Error writing to user buffer\n");
 		return -status;
 	}
-	return data_len;
+	return 0;
 }
 
 static const struct file_operations fops = {
@@ -133,8 +108,8 @@ static int get_dev_response(int id, char *res_buf) {
 	while (res_queue[id][0] == '\0') {
 		msleep(1);
 	}
-	printk("DEVICE found response in queue for req id %d\n", id);
 	int len = strlen(res_queue[id]);
+	printk("DEVICE found response in queue for req id %d with response length %d\n", id, len);
 	strncpy(res_buf, res_queue[id], len);
 	req_queue[id].call = NULL;
 	req_queue[id].len_call = 0;
